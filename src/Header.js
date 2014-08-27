@@ -18,3 +18,4 @@ CM.Disp = {};
 
 CM.Sim = {};
 
+CM.Golden = {};

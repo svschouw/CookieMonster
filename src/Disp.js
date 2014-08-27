@@ -1047,7 +1047,7 @@ CM.Disp.AddMenuStats = function(title) {
 		stats.appendChild(listing(listingQuest('\"Lucky!\" Reward (MAX) (Frenzy)' + (luckySplit ? ' (Golden / Wrath)' : ''), 'GoldCookTooltipPlaceholder'),  document.createTextNode(Beautify(luckyRewardFrenzyMax) + (luckySplit ? (' / ' + Beautify(luckyRewardFrenzyMaxWrath)) : ''))));
 		stats.appendChild(listing(listingQuest('\"Lucky!\" Reward (CUR)' + (luckySplit ? ' (Golden / Wrath)' : ''), 'GoldCookTooltipPlaceholder'),  document.createTextNode(Beautify(luckyCur) + (luckySplit ? (' / ' + Beautify(luckyCurWrath)) : ''))));
 	}
-	
+
 	stats.appendChild(header('Chain Cookies', 'Chain'));
 	if (CM.Config.StatsPref.Chain) {
 		var chainColor = (Game.cookies < CM.Cache.Chain) ? CM.Disp.colorRed : CM.Disp.colorGreen;
@@ -1131,6 +1131,41 @@ CM.Disp.AddMenuStats = function(title) {
 		stats.appendChild(listing(listingQuest('\"Chain\" Reward (CUR) (Golden / Wrath)', 'GoldCookTooltipPlaceholder'),  document.createTextNode(Beautify(chainCur) + ' / ' + Beautify(chainCurWrath))));
 	}
 	
+	stats.appendChild(header('Golden Cookies', 'Golden'));
+	if (CM.Config.StatsPref.Golden) {
+		var frag = document.createDocumentFragment();
+		frag.appendChild(document.createTextNode(Beautify(CM.Cache.GoldenCps) + ' '));
+		var span = document.createElement('span');
+		span.onmouseout = function() { Game.tooltip.hide(); };
+		var ttbody = '<div style="min-width: 180px; margin-bottom: 4px"><div class="name" style="margin-bottom: 4px; text-align: center">Breakdown</div>';
+		var results = CM.Cache.GoldenCpsResults;
+		for (key in results.raw) {
+			ttbody += '<div style="text-align: center">' + key + ': ' + Beautify(results.raw[key]) + '</div>';
+		}
+		ttbody += '<br />';
+		for (key in results.factor) {
+			ttbody += '<div style="text-align: center">' + key + ': ' + Beautify(results.factor[key]) + '</div>';
+		}
+		ttbody += '<br />';
+		ttbody += '<div style="text-align: center">Avg. win: ' + Beautify(results.win) + '</div>';
+		ttbody += '</div>';
+		span.onmouseover = function() {Game.tooltip.draw(this, escape(ttbody));};
+		span.style.cursor = 'default';
+		span.style.display = 'inline-block';
+		span.style.height = '10px';
+		span.style.width = '10px';
+		span.style.borderRadius = '5px';
+		span.style.textAlign = 'center';
+		span.style.backgroundColor = '#C0C0C0';
+		span.style.color = 'black';
+		span.style.fontSize = '9px';
+		span.style.verticalAlign = 'bottom';
+		span.textContent = '?';
+		frag.appendChild(span);
+		stats.appendChild(listing('Golden cookies per second (rough estimation)', frag));
+		stats.appendChild(listing('Golden cookies speedup factor', document.createTextNode(Beautify(CM.Cache.GoldenFactor * 100.0) + '%')));
+	}
+
 	var choEgg = (Game.HasUnlocked('Chocolate egg') && !Game.Has('Chocolate egg')); // Needs to be done for the checking below
 	
 
@@ -1487,6 +1522,11 @@ CM.Disp.Tooltip = function(type, name) {
 		roi.style.marginBottom = '4px';
 		roi.id = 'CMTooltipROI';
 		tooltip.appendChild(roi);
+		tooltip.appendChild(header('Golden Income Change'));
+		var goldenChange = document.createElement('div');
+		goldenChange.style.marginBottom = '4px';
+		goldenChange.id = 'CMTooltipGoldenChange';
+		tooltip.appendChild(goldenChange);
 		tooltip.appendChild(header('Time Left'));
 		var time = document.createElement('div');
 		time.id = 'CMTooltipTime';
@@ -1526,6 +1566,9 @@ CM.Disp.UpdateTooltip = function() {
 				l('CMTooltipBorder').className = CM.Disp.colorTextPre + CM.Cache[target][CM.Disp.tooltipName].color;
 				l('CMTooltipROI').textContent = Beautify(CM.Cache[target][CM.Disp.tooltipName].roi, 2);
 				l('CMTooltipROI').className = CM.Disp.colorTextPre + CM.Cache[target][CM.Disp.tooltipName].color;
+				l('CMTooltipGoldenChange').textContent = Beautify(CM.Cache[target][CM.Disp.tooltipName].goldenChange, 2);
+				if (CM.Cache[target][CM.Disp.tooltipName].goldenChangeColor)
+					l('CMTooltipGoldenChange').className = CM.Disp.colorTextPre + CM.Cache[target][CM.Disp.tooltipName].goldenChangeColor;
 			}
 		}
 		else { // Upgrades
@@ -1535,6 +1578,9 @@ CM.Disp.UpdateTooltip = function() {
 				l('CMTooltipBorder').className = CM.Disp.colorTextPre + CM.Cache.Upgrades[Game.UpgradesInStore[CM.Disp.tooltipName].name].color;
 				l('CMTooltipROI').textContent = Beautify(CM.Cache.Upgrades[Game.UpgradesInStore[CM.Disp.tooltipName].name].roi, 2);
 				l('CMTooltipROI').className = CM.Disp.colorTextPre + CM.Cache.Upgrades[Game.UpgradesInStore[CM.Disp.tooltipName].name].color;
+				l('CMTooltipGoldenChange').textContent = Beautify(CM.Cache.Upgrades[Game.UpgradesInStore[CM.Disp.tooltipName].name].goldenChange, 2);
+				if (CM.Cache.Upgrades[Game.UpgradesInStore[CM.Disp.tooltipName].name].goldenChangeColor)
+					l('CMTooltipGoldenChange').className = CM.Disp.colorTextPre + CM.Cache.Upgrades[Game.UpgradesInStore[CM.Disp.tooltipName].name].goldenChangeColor;
 			}
 		}
 		if (CM.Config.Tooltip == 1 && (CM.Disp.tooltipType != 'b' || Game.buyMode == 1)) {

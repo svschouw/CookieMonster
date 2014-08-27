@@ -132,6 +132,7 @@ CM.Sim.CopyData = function() {
 	CM.Sim.prestige = Game.prestige;
 	CM.Sim.dragonAura = Game.dragonAura;
 	CM.Sim.dragonAura2 = Game.dragonAura2;
+	CM.Sim.cookies = Game.cookies;
 	
 	// Buildings
 	for (var i in Game.Objects) {
@@ -255,6 +256,11 @@ CM.Sim.CalculateGains = function() {
 	}
 
 	CM.Sim.cookiesPs *= mult;			
+	CM.Sim.GoldenCpsResults = CM.Sim.Golden.CalcGoldenCpsRaw();
+	CM.Sim.GoldenCps = CM.Sim.Golden.CalcGoldenCps();
+	CM.Sim.GoldenFactor = CM.Sim.GoldenCps / CM.Sim.cookiesPs;
+	if (Game.frenzy > 0)
+		CM.Sim.GoldenFactor *= Game.frenzyPower;
 };
 
 CM.Sim.CheckOtherAchiev = function() {
@@ -323,9 +329,21 @@ CM.Sim.CheckOtherAchiev = function() {
 }
 
 CM.Sim.BuyBuildings = function(amount, target) {	
+
 	CM.Cache[target] = [];
 	for (var i in Game.Objects) {
 		CM.Sim.CopyData();
+
+		var cost = CM.Sim.BuildingGetPrice(Game.Objects[i].basePrice, Game.Objects[i].amount, amount);
+		// Have enough money for the building
+		if (cost > CM.Sim.cookies)
+			CM.Sim.cookies = cost;
+		CM.Sim.CalculateGains();
+		var goldenCps = CM.Sim.GoldenCps;
+		var oldResults = CM.Sim.GoldenCpsResults;
+		// Buy the cookies
+		CM.Sim.cookies = Math.max(CM.Sim.cookies - cost, 0)
+
 		var me = CM.Sim.Objects[i];
 		me.amount += amount;
 		
@@ -361,6 +379,13 @@ CM.Sim.BuyBuildings = function(amount, target) {
 		if (amount != 1) {
 			CM.Cache[target][i].price = CM.Sim.BuildingGetPrice(Game.Objects[i].basePrice, Game.Objects[i].amount, Game.Objects[i].free, amount);
 		}
+
+		var goldenChange = (CM.Sim.GoldenCps - goldenCps) / CM.Sim.GoldenFactor;
+		CM.Cache[target][i].goldenChange = goldenChange;
+		if (isFinite(goldenChange))
+			CM.Cache[target][i].goldenChangeColor = goldenChange > 0 ? CM.Disp.colorGreen : CM.Disp.colorRed;
+		else
+			CM.Cache[target][i].goldenChangeColor = undefined;
 	}
 }
 
@@ -369,6 +394,17 @@ CM.Sim.BuyUpgrades = function() {
 	for (var i in Game.Upgrades) {
 		if (Game.Upgrades[i].pool == 'toggle' || (Game.Upgrades[i].bought == 0 && Game.Upgrades[i].unlocked && Game.Upgrades[i].pool != 'prestige')) {
 			CM.Sim.CopyData();
+
+			var cost = Game.Upgrades[i].getPrice();
+			// Have enough money for the building
+			if (cost > CM.Sim.cookies)
+				CM.Sim.cookies = cost;
+			CM.Sim.CalculateGains();
+			var goldenCps = CM.Sim.GoldenCps;
+			var oldResults = CM.Sim.GoldenCpsResults;
+			// Buy the cookies
+			CM.Sim.cookies = Math.max(CM.Sim.cookies - cost, 0)
+
 			var me = CM.Sim.Upgrades[i];
 			me.bought = 1;
 			if (Game.CountsAsUpgradeOwned(Game.Upgrades[i].pool)) CM.Sim.UpgradesOwned++;
@@ -400,6 +436,13 @@ CM.Sim.BuyUpgrades = function() {
 		
 			CM.Cache.Upgrades[i] = {};
 			CM.Cache.Upgrades[i].bonus = CM.Sim.cookiesPs - Game.cookiesPs;
+
+			var goldenChange = (CM.Sim.GoldenCps - goldenCps) / CM.Sim.GoldenFactor;
+			CM.Cache.Upgrades[i].goldenChange = goldenChange;
+			if (isFinite(goldenChange))
+				CM.Cache.Upgrades[i].goldenChangeColor = goldenChange > 0 ? CM.Disp.colorGreen : CM.Disp.colorRed;
+			else
+				CM.Cache.Upgrades[i].goldenChangeColor = undefined;
 		}
 	}
 }

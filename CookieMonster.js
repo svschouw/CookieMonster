@@ -18,6 +18,7 @@ CM.Disp = {};
 
 CM.Sim = {};
 
+CM.Golden = {};
 /*********
  * Cache *
  *********/
@@ -211,6 +212,14 @@ CM.Cache.RemakeSellForChoEgg = function() {
 	CM.Cache.SellForChoEgg = sellTotal;
 }
 
+CM.Cache.RemakeGoldenCps = function() {
+	CM.Cache.GoldenCpsResults = CM.Golden.CalcGoldenCpsRaw();
+	CM.Cache.GoldenCps = CM.Golden.CalcGoldenCps();
+	CM.Cache.GoldenFactor = CM.Cache.GoldenCps / Game.cookiesPs;
+	if (Game.frenzy > 0)
+		CM.Cache.GoldenFactor *= Game.frenzyPower;
+}
+
 CM.Cache.min = -1;
 CM.Cache.max = -1;
 CM.Cache.mid = -1;
@@ -230,6 +239,8 @@ CM.Cache.ChainFrenzyReward = 0;
 CM.Cache.ChainFrenzyWrathReward = 0;
 CM.Cache.CentEgg = 0;
 CM.Cache.SellForChoEgg = 0;
+CM.Cache.GoldenCps = 0;
+CM.Cache.GoldenFactor = 1;
 
 /**********
  * Config *
@@ -1433,7 +1444,7 @@ CM.Disp.AddMenuStats = function(title) {
 		stats.appendChild(listing(listingQuest('\"Lucky!\" Reward (MAX) (Frenzy)' + (luckySplit ? ' (Golden / Wrath)' : ''), 'GoldCookTooltipPlaceholder'),  document.createTextNode(Beautify(luckyRewardFrenzyMax) + (luckySplit ? (' / ' + Beautify(luckyRewardFrenzyMaxWrath)) : ''))));
 		stats.appendChild(listing(listingQuest('\"Lucky!\" Reward (CUR)' + (luckySplit ? ' (Golden / Wrath)' : ''), 'GoldCookTooltipPlaceholder'),  document.createTextNode(Beautify(luckyCur) + (luckySplit ? (' / ' + Beautify(luckyCurWrath)) : ''))));
 	}
-	
+
 	stats.appendChild(header('Chain Cookies', 'Chain'));
 	if (CM.Config.StatsPref.Chain) {
 		var chainColor = (Game.cookies < CM.Cache.Chain) ? CM.Disp.colorRed : CM.Disp.colorGreen;
@@ -1517,6 +1528,41 @@ CM.Disp.AddMenuStats = function(title) {
 		stats.appendChild(listing(listingQuest('\"Chain\" Reward (CUR) (Golden / Wrath)', 'GoldCookTooltipPlaceholder'),  document.createTextNode(Beautify(chainCur) + ' / ' + Beautify(chainCurWrath))));
 	}
 	
+	stats.appendChild(header('Golden Cookies', 'Golden'));
+	if (CM.Config.StatsPref.Golden) {
+		var frag = document.createDocumentFragment();
+		frag.appendChild(document.createTextNode(Beautify(CM.Cache.GoldenCps) + ' '));
+		var span = document.createElement('span');
+		span.onmouseout = function() { Game.tooltip.hide(); };
+		var ttbody = '<div style="min-width: 180px; margin-bottom: 4px"><div class="name" style="margin-bottom: 4px; text-align: center">Breakdown</div>';
+		var results = CM.Cache.GoldenCpsResults;
+		for (key in results.raw) {
+			ttbody += '<div style="text-align: center">' + key + ': ' + Beautify(results.raw[key]) + '</div>';
+		}
+		ttbody += '<br />';
+		for (key in results.factor) {
+			ttbody += '<div style="text-align: center">' + key + ': ' + Beautify(results.factor[key]) + '</div>';
+		}
+		ttbody += '<br />';
+		ttbody += '<div style="text-align: center">Avg. win: ' + Beautify(results.win) + '</div>';
+		ttbody += '</div>';
+		span.onmouseover = function() {Game.tooltip.draw(this, escape(ttbody));};
+		span.style.cursor = 'default';
+		span.style.display = 'inline-block';
+		span.style.height = '10px';
+		span.style.width = '10px';
+		span.style.borderRadius = '5px';
+		span.style.textAlign = 'center';
+		span.style.backgroundColor = '#C0C0C0';
+		span.style.color = 'black';
+		span.style.fontSize = '9px';
+		span.style.verticalAlign = 'bottom';
+		span.textContent = '?';
+		frag.appendChild(span);
+		stats.appendChild(listing('Golden cookies per second (rough estimation)', frag));
+		stats.appendChild(listing('Golden cookies speedup factor', document.createTextNode(Beautify(CM.Cache.GoldenFactor * 100.0) + '%')));
+	}
+
 	var choEgg = (Game.HasUnlocked('Chocolate egg') && !Game.Has('Chocolate egg')); // Needs to be done for the checking below
 	
 
@@ -1873,6 +1919,11 @@ CM.Disp.Tooltip = function(type, name) {
 		roi.style.marginBottom = '4px';
 		roi.id = 'CMTooltipROI';
 		tooltip.appendChild(roi);
+		tooltip.appendChild(header('Golden Income Change'));
+		var goldenChange = document.createElement('div');
+		goldenChange.style.marginBottom = '4px';
+		goldenChange.id = 'CMTooltipGoldenChange';
+		tooltip.appendChild(goldenChange);
 		tooltip.appendChild(header('Time Left'));
 		var time = document.createElement('div');
 		time.id = 'CMTooltipTime';
@@ -1912,6 +1963,9 @@ CM.Disp.UpdateTooltip = function() {
 				l('CMTooltipBorder').className = CM.Disp.colorTextPre + CM.Cache[target][CM.Disp.tooltipName].color;
 				l('CMTooltipROI').textContent = Beautify(CM.Cache[target][CM.Disp.tooltipName].roi, 2);
 				l('CMTooltipROI').className = CM.Disp.colorTextPre + CM.Cache[target][CM.Disp.tooltipName].color;
+				l('CMTooltipGoldenChange').textContent = Beautify(CM.Cache[target][CM.Disp.tooltipName].goldenChange, 2);
+				if (CM.Cache[target][CM.Disp.tooltipName].goldenChangeColor)
+					l('CMTooltipGoldenChange').className = CM.Disp.colorTextPre + CM.Cache[target][CM.Disp.tooltipName].goldenChangeColor;
 			}
 		}
 		else { // Upgrades
@@ -1921,6 +1975,9 @@ CM.Disp.UpdateTooltip = function() {
 				l('CMTooltipBorder').className = CM.Disp.colorTextPre + CM.Cache.Upgrades[Game.UpgradesInStore[CM.Disp.tooltipName].name].color;
 				l('CMTooltipROI').textContent = Beautify(CM.Cache.Upgrades[Game.UpgradesInStore[CM.Disp.tooltipName].name].roi, 2);
 				l('CMTooltipROI').className = CM.Disp.colorTextPre + CM.Cache.Upgrades[Game.UpgradesInStore[CM.Disp.tooltipName].name].color;
+				l('CMTooltipGoldenChange').textContent = Beautify(CM.Cache.Upgrades[Game.UpgradesInStore[CM.Disp.tooltipName].name].goldenChange, 2);
+				if (CM.Cache.Upgrades[Game.UpgradesInStore[CM.Disp.tooltipName].name].goldenChangeColor)
+					l('CMTooltipGoldenChange').className = CM.Disp.colorTextPre + CM.Cache.Upgrades[Game.UpgradesInStore[CM.Disp.tooltipName].name].goldenChangeColor;
 			}
 		}
 		if (CM.Config.Tooltip == 1 && (CM.Disp.tooltipType != 'b' || Game.buyMode == 1)) {
@@ -2300,6 +2357,10 @@ CM.DelayInit = function() {
 }
 
 CM.ConfigDefault = {BotBar: 1, TimerBar: 1, TimerBarPos: 0, BuildColor: 1, BulkBuildColor: 0, UpBarColor: 1, Flash: 1, Sound: 1,  Volume: 100, GCSoundURL: 'http://freesound.org/data/previews/66/66717_931655-lq.mp3', SeaSoundURL: 'http://www.freesound.org/data/previews/121/121099_2193266-lq.mp3', GCTimer: 1, Title: 1, Favicon: 1, Tooltip: 1, TooltipAmor: 0, ToolWarnCaut: 1, ToolWarnCautPos: 1, ToolWarnCautBon: 0, ToolWrink: 1, Stats: 1, UpStats: 1, SayTime: 1, Scale: 2, StatsPref: {Lucky: 1, Chain: 1, Prestige: 1, Wrink: 1, Sea: 1, Misc: 1}, Colors : {Blue: '#4bb8f0', Green: '#00ff00', Yellow: '#ffff00', Orange: '#ff7f00', Red: '#ff0000', Purple: '#ff00ff', Gray: '#b3b3b3', Pink: '#ff1493', Brown: '#8b4513'}};
+
+// Golden addon
+CM.ConfigDefault.StatsPref.Golden = 1;
+
 CM.ConfigPrefix = 'CMConfig';
 
 CM.VersionMajor = '2';
@@ -2439,6 +2500,7 @@ CM.Sim.CopyData = function() {
 	CM.Sim.prestige = Game.prestige;
 	CM.Sim.dragonAura = Game.dragonAura;
 	CM.Sim.dragonAura2 = Game.dragonAura2;
+	CM.Sim.cookies = Game.cookies;
 	
 	// Buildings
 	for (var i in Game.Objects) {
@@ -2562,6 +2624,11 @@ CM.Sim.CalculateGains = function() {
 	}
 
 	CM.Sim.cookiesPs *= mult;			
+	CM.Sim.GoldenCpsResults = CM.Sim.Golden.CalcGoldenCpsRaw();
+	CM.Sim.GoldenCps = CM.Sim.Golden.CalcGoldenCps();
+	CM.Sim.GoldenFactor = CM.Sim.GoldenCps / CM.Sim.cookiesPs;
+	if (Game.frenzy > 0)
+		CM.Sim.GoldenFactor *= Game.frenzyPower;
 };
 
 CM.Sim.CheckOtherAchiev = function() {
@@ -2630,9 +2697,21 @@ CM.Sim.CheckOtherAchiev = function() {
 }
 
 CM.Sim.BuyBuildings = function(amount, target) {	
+
 	CM.Cache[target] = [];
 	for (var i in Game.Objects) {
 		CM.Sim.CopyData();
+
+		var cost = CM.Sim.BuildingGetPrice(Game.Objects[i].basePrice, Game.Objects[i].amount, amount);
+		// Have enough money for the building
+		if (cost > CM.Sim.cookies)
+			CM.Sim.cookies = cost;
+		CM.Sim.CalculateGains();
+		var goldenCps = CM.Sim.GoldenCps;
+		var oldResults = CM.Sim.GoldenCpsResults;
+		// Buy the cookies
+		CM.Sim.cookies = Math.max(CM.Sim.cookies - cost, 0)
+
 		var me = CM.Sim.Objects[i];
 		me.amount += amount;
 		
@@ -2668,6 +2747,13 @@ CM.Sim.BuyBuildings = function(amount, target) {
 		if (amount != 1) {
 			CM.Cache[target][i].price = CM.Sim.BuildingGetPrice(Game.Objects[i].basePrice, Game.Objects[i].amount, Game.Objects[i].free, amount);
 		}
+
+		var goldenChange = (CM.Sim.GoldenCps - goldenCps) / CM.Sim.GoldenFactor;
+		CM.Cache[target][i].goldenChange = goldenChange;
+		if (isFinite(goldenChange))
+			CM.Cache[target][i].goldenChangeColor = goldenChange > 0 ? CM.Disp.colorGreen : CM.Disp.colorRed;
+		else
+			CM.Cache[target][i].goldenChangeColor = undefined;
 	}
 }
 
@@ -2676,6 +2762,17 @@ CM.Sim.BuyUpgrades = function() {
 	for (var i in Game.Upgrades) {
 		if (Game.Upgrades[i].pool == 'toggle' || (Game.Upgrades[i].bought == 0 && Game.Upgrades[i].unlocked && Game.Upgrades[i].pool != 'prestige')) {
 			CM.Sim.CopyData();
+
+			var cost = Game.Upgrades[i].getPrice();
+			// Have enough money for the building
+			if (cost > CM.Sim.cookies)
+				CM.Sim.cookies = cost;
+			CM.Sim.CalculateGains();
+			var goldenCps = CM.Sim.GoldenCps;
+			var oldResults = CM.Sim.GoldenCpsResults;
+			// Buy the cookies
+			CM.Sim.cookies = Math.max(CM.Sim.cookies - cost, 0)
+
 			var me = CM.Sim.Upgrades[i];
 			me.bought = 1;
 			if (Game.CountsAsUpgradeOwned(Game.Upgrades[i].pool)) CM.Sim.UpgradesOwned++;
@@ -2707,6 +2804,13 @@ CM.Sim.BuyUpgrades = function() {
 		
 			CM.Cache.Upgrades[i] = {};
 			CM.Cache.Upgrades[i].bonus = CM.Sim.cookiesPs - Game.cookiesPs;
+
+			var goldenChange = (CM.Sim.GoldenCps - goldenCps) / CM.Sim.GoldenFactor;
+			CM.Cache.Upgrades[i].goldenChange = goldenChange;
+			if (isFinite(goldenChange))
+				CM.Cache.Upgrades[i].goldenChangeColor = goldenChange > 0 ? CM.Disp.colorGreen : CM.Disp.colorRed;
+			else
+				CM.Cache.Upgrades[i].goldenChangeColor = undefined;
 		}
 	}
 }
@@ -2772,6 +2876,124 @@ CM.Sim.ResetBonus = function(possiblePresMax) {
 	return (CM.Sim.cookiesPs - Game.cookiesPs);
 }
 
+/**********
+ * Golden *
+ **********/
+
+CM.Sim.Golden = {};
+
+/**
+ * boolean golden: true if normal, false if wrath
+ * number cps: normal cookies per second
+ * number cookies: current number of cookies in bank
+ * integer mice: number of mouse upgrades
+ * enum dur: duration factor: 1 = normal duration; 2 = double duration (Get Lucky)
+ * number time: average number of seconds between cookies (7 at the beginning, 4.5 with Lucky Day; 2 with Serendipity)
+ */
+CM.Golden.GoldenCookieCps = function(golden, cps, cookies, mice, dur, time) {
+	var result = {};
+	result.raw = {};
+
+	var chainDigit = golden ? 7 : 6;
+	result.input = {golden: golden, cps: cps, cookies: cookies, mice: mice, dur: dur, time: time};
+	result.raw.cps = cps;
+	result.raw.cookies = cookies;
+	result.raw.dur = dur;
+	result.raw.time = time;
+	result.raw.chainMoney = Math.min(cps * 3600 * 3, cookies / 4.0);
+	result.raw.chainBase = CM.Cache.MaxChainMoni(chainDigit, result.raw.chainMoney);
+	result.raw.clickFrenzyBase = 77700 * mice / 100.0 * cps * dur;
+	result.raw.frenzyBase = 6 * 77 * cps * dur;
+	result.raw.multiplyBase = Math.min(cookies*0.15, cps * 900);
+	result.raw.ruinBase = -Math.min(cookies*0.05, cps * 600);
+	result.raw.bloodFrenzyBase = 665 * 6 * cps * dur;
+	result.raw.clotBase = -66 * cps/2.0 * dur;
+	result.raw.superComboBase = Math.min(cookies*0.15, cps * 900 * 7);
+	result.raw.doubleFrenzyBase = result.raw.clickFrenzyBase * 7;
+
+	result.factor = {};
+	if (golden) {
+		result.factor.chain = 0.01 / 3 * result.raw.chainBase;
+		result.factor.clickFrenzy = 0.05 / 3 * result.raw.clickFrenzyBase;
+		result.factor.frenzy = 0.49 * result.raw.frenzyBase;
+		result.factor.multiply = 0.49 * result.raw.multiplyBase;
+		if (dur == 2 && time <= 150) {
+			result.factor.superCombo = 0.49 * 0.6 * (result.raw.superComboBase - result.raw.multiplyBase);
+			result.factor.doubleFrenzy = 0.05/3 * 0.49 * (result.raw.doubleFrenzyBase - result.raw.frenzyBase);
+		}
+	} else {
+		result.factor.clickFrenzy = 0.011 * result.raw.clickFrenzyBase;
+		result.factor.ruin = 0.29 * result.raw.ruinBase;
+		result.factor.bloodFrenzy = 0.06 * result.raw.bloodFrenzyBase;
+		result.factor.clot = 0.29 * result.raw.clotBase;
+		result.factor.multiply = 0.29 * result.raw.multiplyBase;
+		result.factor.chain = 0.06 * result.raw.chainBase;
+	}
+	var win = 0;
+	for (factor in result.factor) {
+		win += result.factor[factor];
+	}
+	result.win = win;
+	result.cps = win / time;
+	return result;
+}
+
+CM.Golden.CalcGoldenCpsRaw = function(params) {
+	params = params || {};
+	var golden = params.hasOwnProperty("golden") ? params.golden : Game.elderWrath == 0;
+	var cookiesPs = 0;
+	if (params.hasOwnProperty("cookiesPs"))
+		cookiesPs = params.cookiesPs;
+	else {
+		cookiesPs = Game.cookiesPs;
+		if (Game.frenzy > 0) {
+			cookiesPs /= Game.frenzyPower;
+		}
+	}
+	var cookies = params.hasOwnProperty("cookies") ? params.cookies : Game.cookies;
+	var mice = 0;
+	if (params.hasOwnProperty("mice"))
+		mice = params.mice;
+	else {
+		if (Game.Has('Plastic mouse')) mice++;
+		if (Game.Has('Iron mouse')) mice++;
+		if (Game.Has('Titanium mouse')) mice++;
+		if (Game.Has('Adamantium mouse')) mice++;
+		if (Game.Has('Unobtainium mouse')) mice++;
+		if (Game.Has('Eludium mouse')) mice++;
+		if (Game.Has('Wishalloy mouse')) mice++;
+		if (Game.Has('Fantasteel mouse')) mice++;
+		if (Game.Has('Nevercrack mouse')) mice++;
+		if (Game.Has('Cookie egg')) mice *= 1.1;
+	}
+	var dur = 0;
+	if (params.hasOwnProperty("dur"))
+		dur = params.dur;
+	else
+		dur = Game.Has("Get lucky") ? 2 : 1;
+	var lucky = 0;
+	if (params.hasOwnProperty("lucky"))
+		lucky = params.lucky;
+	else {
+		lucky = 0;
+		if (Game.Has("Lucky day")) lucky++;
+		if (Game.Has("Serendipity")) lucky++;
+	}	
+	var time = [7, 4.5, 2][lucky] * 60;
+	return CM.Golden.GoldenCookieCps(golden, cookiesPs, cookies, mice, dur, time);
+}
+
+CM.Golden.CalcGoldenCps = function(params) {
+	params = params || {};
+	return CM.Golden.CalcGoldenCpsRaw(params).cps;
+}
+
+eval('CM.Sim.Golden.CalcGoldenCpsRaw = ' + CM.Golden.CalcGoldenCpsRaw.toString().split('Game.Has').join('CM.Sim.Has').split('Game.cookies').join('CM.Sim.cookies'));
+
+CM.Sim.Golden.CalcGoldenCps = function(params) {
+	params = params || {};
+	return CM.Sim.Golden.CalcGoldenCpsRaw(params).cps;
+}
 /**********
  * Footer *
  **********/

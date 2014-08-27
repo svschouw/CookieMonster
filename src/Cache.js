@@ -191,6 +191,14 @@ CM.Cache.RemakeSellForChoEgg = function() {
 	CM.Cache.SellForChoEgg = sellTotal;
 }
 
+CM.Cache.RemakeGoldenCps = function() {
+	CM.Cache.GoldenCpsResults = CM.Golden.CalcGoldenCpsRaw();
+	CM.Cache.GoldenCps = CM.Golden.CalcGoldenCps();
+	CM.Cache.GoldenFactor = CM.Cache.GoldenCps / Game.cookiesPs;
+	if (Game.frenzy > 0)
+		CM.Cache.GoldenFactor *= Game.frenzyPower;
+}
+
 CM.Cache.min = -1;
 CM.Cache.max = -1;
 CM.Cache.mid = -1;
@@ -210,4 +218,6 @@ CM.Cache.ChainFrenzyReward = 0;
 CM.Cache.ChainFrenzyWrathReward = 0;
 CM.Cache.CentEgg = 0;
 CM.Cache.SellForChoEgg = 0;
+CM.Cache.GoldenCps = 0;
+CM.Cache.GoldenFactor = 1;
 
