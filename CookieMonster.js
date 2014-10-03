@@ -262,7 +262,7 @@ CM.LoadConfig = function() {
 				CM.Config[i] = CM.ConfigDefault[i];
 			}
 			else if (i != 'StatsPref' && i != 'Colors') {
-				if (i.indexOf('SoundURL') == -1) {
+				if (i.indexOf('SoundURL') == -1 && i.indexOf('OCDTarget') == -1) {
 					if (!(CM.Config[i] > -1 && CM.Config[i] < CM.ConfigData[i].label.length)) {
 						mod = true;
 						CM.Config[i] = CM.ConfigDefault[i];
@@ -384,6 +384,8 @@ CM.ConfigData.ToolWarnCautBon = {label: ['Calculate Tooltip Warning/Caution With
 CM.ConfigData.ToolWrink = {label: ['Wrinkler Tooltip OFF', 'Wrinkler Tooltip ON'], desc: 'Shows the amount of cookies a wrinkler will give when popping it', toggle: true};
 CM.ConfigData.Stats = {label: ['Statistics OFF', 'Statistics ON'], desc: 'Extra Cookie Monster statistics!', toggle: true};
 CM.ConfigData.UpStats = {label: ['Statistics Update Rate (Default)', 'Statistics Update Rate (1s)'], desc: 'Default Game rate is once every 5 seconds', toggle: false};
+CM.ConfigData.OCDMode = {label: ['OCD OFF', 'OCD Chips', 'OCD Total Cookies', 'OCD Current Cookies'], desc: 'Help to get to a certain exact number'};
+CM.ConfigData.OCDTarget = {label: 'OCD Target', desc: 'The number to aim for'};
 CM.ConfigData.SayTime = {label: ['Format Time OFF', 'Format Time ON'], desc: 'Change how time is displayed in statistics', toggle: true, func: function() {CM.Disp.ToggleSayTime();}};
 CM.ConfigData.Scale = {label: ['Game\'s Setting Scale', 'Metric', 'Short Scale', 'Scientific Notation'], desc: 'Change how long numbers are handled', toggle: false, func: function() {CM.Disp.RefreshScale();}};
 
@@ -1217,7 +1219,8 @@ CM.Disp.AddMenuPref = function(title) {
 		return div;
 	}
 	
-	var url = function(config) {
+	var text = function(config, width) {
+		width = width || 100;
 		var div = document.createElement('div');
 		div.className = 'listing';
 		var span = document.createElement('span');
@@ -1229,7 +1232,7 @@ CM.Disp.AddMenuPref = function(title) {
 		input.className = 'option';
 		input.type = 'text';
 		input.value = CM.Config[config];
-		input.style.width = '300px';
+		input.style.width = width + 'px';
 		div.appendChild(input);
 		div.appendChild(document.createTextNode(' '));
 		var a = document.createElement('a');
@@ -1241,6 +1244,9 @@ CM.Disp.AddMenuPref = function(title) {
 		label.textContent = CM.ConfigData[config].desc;
 		div.appendChild(label);
 		return div;
+	}
+	var url = function(config) {
+		return text(config, 300);
 	}
 		
 	frag.appendChild(header('Bars/Colors'));
@@ -1308,6 +1314,8 @@ CM.Disp.AddMenuPref = function(title) {
 	frag.appendChild(header('Statistics'));
 	frag.appendChild(listing('Stats'));
 	frag.appendChild(listing('UpStats'));
+	frag.appendChild(listing('OCDMode'));
+	frag.appendChild(text('OCDTarget'));
 	frag.appendChild(listing('SayTime'));
 	
 	frag.appendChild(header('Other'));
@@ -1585,6 +1593,25 @@ CM.Disp.AddMenuStats = function(title) {
 			choEggTotal += totalSucked;
 		}
 		choEggTotal *= 0.05; // Used in Prestige calculation below also
+	}
+
+	stats.appendChild(header('OCD', 'OCD'));
+	if (CM.Config.StatsPref.OCD) {
+		if (CM.Config.OCDMode == 1) {
+			// target = prestige
+			var neededTargetMin = Game.HowManyCookiesReset(CM.Config.OCDTarget) - (Game.cookiesEarned + Game.cookiesReset);
+			var neededTargetMax = Game.HowManyCookiesReset(Number(CM.Config.OCDTarget) + 1) - (Game.cookiesEarned + Game.cookiesReset);
+			var cookiesTargetText = Beautify(neededTargetMin) + ' - ' + Beautify(neededTargetMax);
+			stats.appendChild(listing('Cookies To Target',  document.createTextNode(cookiesTargetText)));
+			stats.appendChild(listing('Time To Target',  document.createTextNode(CM.Disp.FormatTime(neededTargetMin / (Game.cookiesPs * (1 - Game.cpsSucked)), 1))));
+		} else if (CM.Config.OCDMode >= 2) {
+			// target = cookies
+			var neededTarget = CM.Config.OCDTarget - Game.cookiesEarned;
+			if (CM.Config.OCDMode == 2)
+				neededTarget -= Game.cookiesReset;
+			stats.appendChild(listing('Cookies To Target',  document.createTextNode(Beautify(neededTarget))));
+			stats.appendChild(listing('Time To Target',  document.createTextNode(CM.Disp.FormatTime(neededTarget / (Game.cookiesPs * (1 - Game.cpsSucked)), 1))));
+		}
 	}
 
 	stats.appendChild(header('Prestige', 'Prestige'));
@@ -2274,6 +2301,12 @@ CM.Loop = function() {
 			
 			CM.Cache.RemakeSeaSpec();
 			CM.Cache.RemakeSellForChoEgg();
+
+			CM.Cache.RemakeGoldenCps();
+
+			CM.Disp.UpdateBotBarOther();
+			CM.Disp.UpdateBuildings();
+			CM.Disp.UpdateUpgrades();
 		
 			CM.Sim.DoSims = 0;
 		}
@@ -2360,6 +2393,10 @@ CM.ConfigDefault = {BotBar: 1, TimerBar: 1, TimerBarPos: 0, BuildColor: 1, BulkB
 
 // Golden addon
 CM.ConfigDefault.StatsPref.Golden = 1;
+// OCD mode
+CM.ConfigDefault.StatsPref.OCD = 1;
+CM.ConfigDefault.OCDMode = 0;
+CM.ConfigDefault.OCDTarget = '0';
 
 CM.ConfigPrefix = 'CMConfig';
 
@@ -2938,8 +2975,7 @@ CM.Golden.GoldenCookieCps = function(golden, cps, cookies, mice, dur, time) {
 	return result;
 }
 
-CM.Golden.CalcGoldenCpsRaw = function(params) {
-	params = params || {};
+CM.Golden.CalcGoldenCpsRaw = function(params = {}) {
 	var golden = params.hasOwnProperty("golden") ? params.golden : Game.elderWrath == 0;
 	var cookiesPs = 0;
 	if (params.hasOwnProperty("cookiesPs"))
@@ -2983,15 +3019,13 @@ CM.Golden.CalcGoldenCpsRaw = function(params) {
 	return CM.Golden.GoldenCookieCps(golden, cookiesPs, cookies, mice, dur, time);
 }
 
-CM.Golden.CalcGoldenCps = function(params) {
-	params = params || {};
+CM.Golden.CalcGoldenCps = function(params = {}) {
 	return CM.Golden.CalcGoldenCpsRaw(params).cps;
 }
 
 eval('CM.Sim.Golden.CalcGoldenCpsRaw = ' + CM.Golden.CalcGoldenCpsRaw.toString().split('Game.Has').join('CM.Sim.Has').split('Game.cookies').join('CM.Sim.cookies'));
 
-CM.Sim.Golden.CalcGoldenCps = function(params) {
-	params = params || {};
+CM.Sim.Golden.CalcGoldenCps = function(params = {}) {
 	return CM.Sim.Golden.CalcGoldenCpsRaw(params).cps;
 }
 /**********

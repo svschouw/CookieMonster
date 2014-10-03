@@ -60,8 +60,7 @@ CM.Golden.GoldenCookieCps = function(golden, cps, cookies, mice, dur, time) {
 	return result;
 }
 
-CM.Golden.CalcGoldenCpsRaw = function(params) {
-	params = params || {};
+CM.Golden.CalcGoldenCpsRaw = function(params = {}) {
 	var golden = params.hasOwnProperty("golden") ? params.golden : Game.elderWrath == 0;
 	var cookiesPs = 0;
 	if (params.hasOwnProperty("cookiesPs"))
@@ -105,14 +104,12 @@ CM.Golden.CalcGoldenCpsRaw = function(params) {
 	return CM.Golden.GoldenCookieCps(golden, cookiesPs, cookies, mice, dur, time);
 }
 
-CM.Golden.CalcGoldenCps = function(params) {
-	params = params || {};
+CM.Golden.CalcGoldenCps = function(params = {}) {
 	return CM.Golden.CalcGoldenCpsRaw(params).cps;
 }
 
 eval('CM.Sim.Golden.CalcGoldenCpsRaw = ' + CM.Golden.CalcGoldenCpsRaw.toString().split('Game.Has').join('CM.Sim.Has').split('Game.cookies').join('CM.Sim.cookies'));
 
-CM.Sim.Golden.CalcGoldenCps = function(params) {
-	params = params || {};
+CM.Sim.Golden.CalcGoldenCps = function(params = {}) {
 	return CM.Sim.Golden.CalcGoldenCpsRaw(params).cps;
 }

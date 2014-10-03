@@ -820,7 +820,8 @@ CM.Disp.AddMenuPref = function(title) {
 		return div;
 	}
 	
-	var url = function(config) {
+	var text = function(config, width) {
+		width = width || 100;
 		var div = document.createElement('div');
 		div.className = 'listing';
 		var span = document.createElement('span');
@@ -832,7 +833,7 @@ CM.Disp.AddMenuPref = function(title) {
 		input.className = 'option';
 		input.type = 'text';
 		input.value = CM.Config[config];
-		input.style.width = '300px';
+		input.style.width = width + 'px';
 		div.appendChild(input);
 		div.appendChild(document.createTextNode(' '));
 		var a = document.createElement('a');
@@ -844,6 +845,9 @@ CM.Disp.AddMenuPref = function(title) {
 		label.textContent = CM.ConfigData[config].desc;
 		div.appendChild(label);
 		return div;
+	}
+	var url = function(config) {
+		return text(config, 300);
 	}
 		
 	frag.appendChild(header('Bars/Colors'));
@@ -911,6 +915,8 @@ CM.Disp.AddMenuPref = function(title) {
 	frag.appendChild(header('Statistics'));
 	frag.appendChild(listing('Stats'));
 	frag.appendChild(listing('UpStats'));
+	frag.appendChild(listing('OCDMode'));
+	frag.appendChild(text('OCDTarget'));
 	frag.appendChild(listing('SayTime'));
 	
 	frag.appendChild(header('Other'));
@@ -1188,6 +1194,25 @@ CM.Disp.AddMenuStats = function(title) {
 			choEggTotal += totalSucked;
 		}
 		choEggTotal *= 0.05; // Used in Prestige calculation below also
+	}
+
+	stats.appendChild(header('OCD', 'OCD'));
+	if (CM.Config.StatsPref.OCD) {
+		if (CM.Config.OCDMode == 1) {
+			// target = prestige
+			var neededTargetMin = Game.HowManyCookiesReset(CM.Config.OCDTarget) - (Game.cookiesEarned + Game.cookiesReset);
+			var neededTargetMax = Game.HowManyCookiesReset(Number(CM.Config.OCDTarget) + 1) - (Game.cookiesEarned + Game.cookiesReset);
+			var cookiesTargetText = Beautify(neededTargetMin) + ' - ' + Beautify(neededTargetMax);
+			stats.appendChild(listing('Cookies To Target',  document.createTextNode(cookiesTargetText)));
+			stats.appendChild(listing('Time To Target',  document.createTextNode(CM.Disp.FormatTime(neededTargetMin / (Game.cookiesPs * (1 - Game.cpsSucked)), 1))));
+		} else if (CM.Config.OCDMode >= 2) {
+			// target = cookies
+			var neededTarget = CM.Config.OCDTarget - Game.cookiesEarned;
+			if (CM.Config.OCDMode == 2)
+				neededTarget -= Game.cookiesReset;
+			stats.appendChild(listing('Cookies To Target',  document.createTextNode(Beautify(neededTarget))));
+			stats.appendChild(listing('Time To Target',  document.createTextNode(CM.Disp.FormatTime(neededTarget / (Game.cookiesPs * (1 - Game.cpsSucked)), 1))));
+		}
 	}
 
 	stats.appendChild(header('Prestige', 'Prestige'));

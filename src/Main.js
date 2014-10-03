@@ -93,6 +93,12 @@ CM.Loop = function() {
 			
 			CM.Cache.RemakeSeaSpec();
 			CM.Cache.RemakeSellForChoEgg();
+
+			CM.Cache.RemakeGoldenCps();
+
+			CM.Disp.UpdateBotBarOther();
+			CM.Disp.UpdateBuildings();
+			CM.Disp.UpdateUpgrades();
 		
 			CM.Sim.DoSims = 0;
 		}
@@ -179,6 +185,10 @@ CM.ConfigDefault = {BotBar: 1, TimerBar: 1, TimerBarPos: 0, BuildColor: 1, BulkB
 
 // Golden addon
 CM.ConfigDefault.StatsPref.Golden = 1;
+// OCD mode
+CM.ConfigDefault.StatsPref.OCD = 1;
+CM.ConfigDefault.OCDMode = 0;
+CM.ConfigDefault.OCDTarget = '0';
 
 CM.ConfigPrefix = 'CMConfig';
 

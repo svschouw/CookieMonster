@@ -18,7 +18,7 @@ CM.LoadConfig = function() {
 				CM.Config[i] = CM.ConfigDefault[i];
 			}
 			else if (i != 'StatsPref' && i != 'Colors') {
-				if (i.indexOf('SoundURL') == -1) {
+				if (i.indexOf('SoundURL') == -1 && i.indexOf('OCDTarget') == -1) {
 					if (!(CM.Config[i] > -1 && CM.Config[i] < CM.ConfigData[i].label.length)) {
 						mod = true;
 						CM.Config[i] = CM.ConfigDefault[i];
@@ -140,6 +140,8 @@ CM.ConfigData.ToolWarnCautBon = {label: ['Calculate Tooltip Warning/Caution With
 CM.ConfigData.ToolWrink = {label: ['Wrinkler Tooltip OFF', 'Wrinkler Tooltip ON'], desc: 'Shows the amount of cookies a wrinkler will give when popping it', toggle: true};
 CM.ConfigData.Stats = {label: ['Statistics OFF', 'Statistics ON'], desc: 'Extra Cookie Monster statistics!', toggle: true};
 CM.ConfigData.UpStats = {label: ['Statistics Update Rate (Default)', 'Statistics Update Rate (1s)'], desc: 'Default Game rate is once every 5 seconds', toggle: false};
+CM.ConfigData.OCDMode = {label: ['OCD OFF', 'OCD Chips', 'OCD Total Cookies', 'OCD Current Cookies'], desc: 'Help to get to a certain exact number'};
+CM.ConfigData.OCDTarget = {label: 'OCD Target', desc: 'The number to aim for'};
 CM.ConfigData.SayTime = {label: ['Format Time OFF', 'Format Time ON'], desc: 'Change how time is displayed in statistics', toggle: true, func: function() {CM.Disp.ToggleSayTime();}};
 CM.ConfigData.Scale = {label: ['Game\'s Setting Scale', 'Metric', 'Short Scale', 'Scientific Notation'], desc: 'Change how long numbers are handled', toggle: false, func: function() {CM.Disp.RefreshScale();}};
 
